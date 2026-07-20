@@ -1,0 +1,128 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { SITE_TITLE } from '../consts';
+
+let error = '';
+let success = false;
+
+if (Astro.request.method === 'POST') {
+	try {
+		const formData = await Astro.request.formData();
+		const username = formData.get('username')?.toString().trim() || '';
+		const email = formData.get('email')?.toString().trim() || '';
+		const password = formData.get('password')?.toString() || '';
+		const confirmPassword = formData.get('confirm_password')?.toString() || '';
+
+		if (!username || !email || !password) {
+			error = '请填写所有必填项';
+		} else if (username.length < 3) {
+			error = '用户名至少需要3个字符';
+		} else if (password.length < 6) {
+			error = '密码至少需要6个字符';
+		} else if (password !== confirmPassword) {
+			error = '两次输入的密码不一致';
+		} else {
+			success = true;
+		}
+	} catch (e) {
+		error = '注册失败，请稍后重试';
+	}
+}
+
+const pageTitle = `注册 - ${SITE_TITLE}`;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={pageTitle} description="用户注册" />
+	</head>
+	<body>
+		<Header />
+		<div class="container" style="padding: 40px 16px; min-height: calc(100vh - 200px); display: flex; align-items: center; justify-content: center;">
+			<div class="card" style="width: 100%; max-width: 420px;">
+				<div class="card-header" style="text-align: center; font-size: 18px;">
+					✨ 用户注册
+				</div>
+				<div class="card-body">
+					{success && (
+						<div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 6px; margin-bottom: 16px; color: var(--success);">
+							✅ 注册成功！<a href="/login">去登录</a>
+						</div>
+					)}
+
+					{error && (
+						<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 12px; border-radius: 6px; margin-bottom: 16px; color: var(--danger);">
+							❌ {error}
+						</div>
+					)}
+
+					<form method="POST">
+						<div class="form-group">
+							<label for="username">用户名 <span style="color: var(--danger);">*</span></label>
+							<input
+								type="text"
+								id="username"
+								name="username"
+								placeholder="3-20个字符"
+								maxlength="20"
+								required
+							/>
+						</div>
+
+						<div class="form-group">
+							<label for="email">邮箱 <span style="color: var(--danger);">*</span></label>
+							<input
+								type="email"
+								id="email"
+								name="email"
+								placeholder="请输入邮箱地址"
+								required
+							/>
+						</div>
+
+						<div class="form-group">
+							<label for="password">密码 <span style="color: var(--danger);">*</span></label>
+							<input
+								type="password"
+								id="password"
+								name="password"
+								placeholder="至少6个字符"
+								required
+							/>
+						</div>
+
+						<div class="form-group">
+							<label for="confirm_password">确认密码 <span style="color: var(--danger);">*</span></label>
+							<input
+								type="password"
+								id="confirm_password"
+								name="confirm_password"
+								placeholder="再次输入密码"
+								required
+							/>
+						</div>
+
+						<div class="form-group">
+							<label style="display: flex; align-items: flex-start; gap: 6px; font-weight: normal; cursor: pointer; font-size: 13px;">
+								<input type="checkbox" name="agree" style="width: auto; margin-top: 3px;" required />
+								<span>我已阅读并同意<a href="#">用户协议</a>和<a href="#">隐私政策</a></span>
+							</label>
+						</div>
+
+						<button type="submit" class="btn btn-primary w-full" style="width: 100%;">
+							注册账号
+						</button>
+					</form>
+
+					<div style="margin-top: 20px; text-align: center; font-size: 14px; color: var(--text-secondary);">
+						已有账号？<a href="/login">立即登录</a>
+					</div>
+				</div>
+			</div>
+		</div>
+		<Footer />
+	</body>
+</html>

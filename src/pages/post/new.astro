@@ -1,0 +1,153 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { SITE_TITLE } from '../../consts';
+import { initDB } from '../../lib/init-db';
+import { getCategoriesWithForums, getForumById, createThread } from '../../lib/db';
+
+const runtime = Astro.locals.runtime;
+await initDB(runtime);
+
+const forumIdParam = Astro.url.searchParams.get('forum_id');
+const preselectedForumId = forumIdParam ? parseInt(forumIdParam) : null;
+
+const categories = await getCategoriesWithForums();
+const preselectedForum = preselectedForumId ? await getForumById(preselectedForumId) : null;
+
+let success = false;
+let error = '';
+let newThreadId: number | null = null;
+
+if (Astro.request.method === 'POST') {
+	try {
+		const formData = await Astro.request.formData();
+		const forumId = parseInt(formData.get('forum_id')?.toString() || '0');
+		const title = formData.get('title')?.toString().trim() || '';
+		const content = formData.get('content')?.toString().trim() || '';
+
+		if (!forumId) {
+			error = '请选择版块';
+		} else if (!title) {
+			error = '请输入标题';
+		} else if (title.length < 2) {
+			error = '标题至少需要2个字符';
+		} else if (!content) {
+			error = '请输入内容';
+		} else if (content.length < 5) {
+			error = '内容至少需要5个字符';
+		} else {
+			const userId = 2;
+			newThreadId = await createThread(forumId, userId, title, content);
+			if (newThreadId) {
+				success = true;
+				return Astro.redirect(`/thread/${newThreadId}`);
+			} else {
+				error = '发帖失败，请稍后重试';
+			}
+		}
+	} catch (e) {
+		error = '发帖失败，请稍后重试';
+		console.error(e);
+	}
+}
+
+const pageTitle = `发表新主题 - ${SITE_TITLE}`;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={pageTitle} description="发表新主题" />
+	</head>
+	<body>
+		<Header />
+		<div class="container">
+			<Breadcrumb
+				items={[
+					{ label: '论坛', href: '/' },
+					{ label: '发表新主题' },
+				]}
+			/>
+
+			<div class="main-layout">
+				<div class="main-content">
+					<div class="card">
+						<div class="card-header">
+							✏️ 发表新主题
+						</div>
+						<div class="card-body">
+							{error && (
+								<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 12px; border-radius: 6px; margin-bottom: 16px; color: var(--danger);">
+									❌ {error}
+								</div>
+							)}
+
+							<form method="POST">
+								<div class="form-group">
+									<label for="forum_id">选择版块 <span style="color: var(--danger);">*</span></label>
+									<select id="forum_id" name="forum_id" required>
+										<option value="">-- 请选择版块 --</option>
+										{categories.map((category) => (
+											<optgroup label={category.name}>
+												{category.forums.map((forum) => (
+													<option value={forum.id} selected={preselectedForumId === forum.id}>
+														{forum.name}
+													</option>
+												))}
+											</optgroup>
+										))}
+									</select>
+								</div>
+
+								<div class="form-group">
+									<label for="title">标题 <span style="color: var(--danger);">*</span></label>
+									<input
+										type="text"
+										id="title"
+										name="title"
+										placeholder="请输入帖子标题"
+										maxlength="100"
+										required
+									/>
+									<div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+										标题最多100个字符
+									</div>
+								</div>
+
+								<div class="form-group">
+									<label for="content">内容 <span style="color: var(--danger);">*</span></label>
+									<textarea
+										id="content"
+										name="content"
+										placeholder="请输入帖子内容..."
+										rows="12"
+										required
+									></textarea>
+								</div>
+
+								<div class="flex justify-between items-center" style="margin-top: 24px;">
+									<div class="text-small text-muted">
+										发布前请确认内容符合论坛规范
+									</div>
+									<div style="display: flex; gap: 10px;">
+										<button type="button" class="btn btn-secondary" onclick="history.back()">
+											取消
+										</button>
+										<button type="submit" class="btn btn-primary">
+											发表主题
+										</button>
+									</div>
+								</div>
+							</form>
+						</div>
+					</div>
+				</div>
+				<Sidebar />
+			</div>
+		</div>
+		<Footer />
+	</body>
+</html>

@@ -1,0 +1,111 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { SITE_TITLE } from '../consts';
+
+let error = '';
+let success = false;
+
+if (Astro.request.method === 'POST') {
+	try {
+		const formData = await Astro.request.formData();
+		const username = formData.get('username')?.toString().trim() || '';
+		const password = formData.get('password')?.toString() || '';
+
+		if (!username || !password) {
+			error = '请填写用户名和密码';
+		} else {
+			success = true;
+		}
+	} catch (e) {
+		error = '登录失败，请稍后重试';
+	}
+}
+
+const pageTitle = `登录 - ${SITE_TITLE}`;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={pageTitle} description="用户登录" />
+	</head>
+	<body>
+		<Header />
+		<div class="container" style="padding: 40px 16px; min-height: calc(100vh - 200px); display: flex; align-items: center; justify-content: center;">
+			<div class="card" style="width: 100%; max-width: 420px;">
+				<div class="card-header" style="text-align: center; font-size: 18px;">
+					🔐 用户登录
+				</div>
+				<div class="card-body">
+					{success && (
+						<div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 12px; border-radius: 6px; margin-bottom: 16px; color: var(--success);">
+							✅ 登录成功！（演示模式）
+						</div>
+					)}
+
+					{error && (
+						<div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 12px; border-radius: 6px; margin-bottom: 16px; color: var(--danger);">
+							❌ {error}
+						</div>
+					)}
+
+					<form method="POST">
+						<div class="form-group">
+							<label for="username">用户名</label>
+							<input
+								type="text"
+								id="username"
+								name="username"
+								placeholder="请输入用户名"
+								required
+							/>
+						</div>
+
+						<div class="form-group">
+							<label for="password">密码</label>
+							<input
+								type="password"
+								id="password"
+								name="password"
+								placeholder="请输入密码"
+								required
+							/>
+						</div>
+
+						<div class="form-group">
+							<label style="display: flex; align-items: center; gap: 6px; font-weight: normal; cursor: pointer;">
+								<input type="checkbox" name="remember" style="width: auto;" />
+								记住我
+							</label>
+						</div>
+
+						<button type="submit" class="btn btn-primary w-full" style="width: 100%;">
+							登录
+						</button>
+					</form>
+
+					<div style="margin-top: 20px; text-align: center; font-size: 14px; color: var(--text-secondary);">
+						还没有账号？<a href="/register">立即注册</a>
+					</div>
+
+					<div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+						<div style="text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+							第三方登录
+						</div>
+						<div style="display: flex; justify-content: center; gap: 12px;">
+							<button type="button" class="btn btn-outline" style="flex: 1;">
+								GitHub
+							</button>
+							<button type="button" class="btn btn-outline" style="flex: 1;">
+								Microsoft
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<Footer />
+	</body>
+</html>

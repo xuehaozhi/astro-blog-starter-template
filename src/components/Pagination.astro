@@ -1,0 +1,73 @@
+---
+interface Props {
+	currentPage: number;
+	totalPages: number;
+	baseUrl: string;
+}
+
+const { currentPage, totalPages, baseUrl } = Astro.props;
+
+function getPageUrl(page: number): string {
+	if (page === 1) {
+		return baseUrl;
+	}
+	const sep = baseUrl.includes('?') ? '&' : '?';
+	return `${baseUrl}${sep}page=${page}`;
+}
+
+const pages: (number | '...')[] = [];
+
+if (totalPages <= 7) {
+	for (let i = 1; i <= totalPages; i++) {
+		pages.push(i);
+	}
+} else {
+	if (currentPage <= 4) {
+		for (let i = 1; i <= 5; i++) {
+			pages.push(i);
+		}
+		pages.push('...');
+		pages.push(totalPages);
+	} else if (currentPage >= totalPages - 3) {
+		pages.push(1);
+		pages.push('...');
+		for (let i = totalPages - 4; i <= totalPages; i++) {
+			pages.push(i);
+		}
+	} else {
+		pages.push(1);
+		pages.push('...');
+		for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+			pages.push(i);
+		}
+		pages.push('...');
+		pages.push(totalPages);
+	}
+}
+---
+
+{totalPages > 1 && (
+	<div class="pagination">
+		{currentPage > 1 ? (
+			<a href={getPageUrl(currentPage - 1)}>上一页</a>
+		) : (
+			<span class="text-muted" style="opacity: 0.5;">上一页</span>
+		)}
+
+		{pages.map((page) =>
+			page === '...' ? (
+				<span class="dots">...</span>
+			) : page === currentPage ? (
+				<span class="current">{page}</span>
+			) : (
+				<a href={getPageUrl(page)}>{page}</a>
+			)
+		)}
+
+		{currentPage < totalPages ? (
+			<a href={getPageUrl(currentPage + 1)}>下一页</a>
+		) : (
+			<span class="text-muted" style="opacity: 0.5;">下一页</span>
+		)}
+	</div>
+)}

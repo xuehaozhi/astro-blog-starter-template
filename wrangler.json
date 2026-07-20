@@ -1,5 +1,5 @@
 {
-	"name": "astro-blog-starter-template",
+	"name": "astro-forum",
 	"compatibility_date": "2025-10-08",
 	"compatibility_flags": ["nodejs_compat"],
 	"main": "./dist/_worker.js/index.js",
@@ -10,5 +10,13 @@
 	"observability": {
 		"enabled": true
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "forum-db",
+			"database_id": "local-db"
+		}
+	],
+	"migrations_dir": "migrations"
 }

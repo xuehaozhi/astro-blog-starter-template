@@ -1,0 +1,208 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Header from '../../components/Header.astro';
+import Footer from '../../components/Footer.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import Pagination from '../../components/Pagination.astro';
+import { SITE_TITLE } from '../../consts';
+import { initDB } from '../../lib/init-db';
+import { getThreadById, getForumById, getCategoryById, getPostsByThread, incrementThreadViewCount, createPost } from '../../lib/db';
+import { formatNumber, formatDate, formatFullDate } from '../../lib/utils';
+
+const runtime = Astro.locals.runtime;
+await initDB(runtime);
+
+const threadId = parseInt(Astro.params.id);
+const page = parseInt(Astro.url.searchParams.get('page') || '1');
+const pageSize = 20;
+
+const thread = await getThreadById(threadId);
+
+if (!thread) {
+	return Astro.redirect('/404');
+}
+
+await incrementThreadViewCount(threadId);
+
+const forum = await getForumById(thread.forum_id);
+const category = forum ? await getCategoryById(forum.category_id) : null;
+const { posts, total } = await getPostsByThread(threadId, page, pageSize);
+const totalPages = Math.ceil(total / pageSize);
+
+let replySuccess = false;
+let replyError = '';
+
+if (Astro.request.method === 'POST') {
+	try {
+		const formData = await Astro.request.formData();
+		const content = formData.get('content')?.toString().trim();
+		
+		if (content && content.length > 0) {
+			const userId = 2;
+			await createPost(threadId, userId, content);
+			replySuccess = true;
+			return Astro.redirect(`/thread/${threadId}?page=${totalPages}#reply-success`);
+		} else {
+			replyError = '回复内容不能为空';
+		}
+	} catch (e) {
+		replyError = '回复失败，请稍后重试';
+	}
+}
+
+const pageTitle = `${thread.title} - ${SITE_TITLE}`;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={pageTitle} description={thread.content.substring(0, 200)} />
+	</head>
+	<body>
+		<Header />
+		<div class="container">
+			<Breadcrumb
+				items={[
+					category ? { label: category.name, href: '#' } : null,
+					forum ? { label: forum.name, href: `/forum/${forum.id}` } : null,
+					{ label: thread.title },
+				].filter(Boolean)}
+			/>
+
+			<div class="main-layout">
+				<div class="main-content">
+					<div class="thread-view-header">
+						<h1 class="thread-view-title">
+							{thread.is_pinned && <span style="color: var(--danger); margin-right: 8px;">📌</span>}
+							{thread.title}
+						</h1>
+						<div class="thread-view-meta">
+							<div class="thread-view-meta-item">
+								👤 <a href="#">{thread.username}</a>
+							</div>
+							<div class="thread-view-meta-item">
+								📅 {formatFullDate(thread.created_at)}
+							</div>
+							<div class="thread-view-meta-item">
+								👁️ {formatNumber(thread.view_count)} 浏览
+							</div>
+							<div class="thread-view-meta-item">
+								💬 {formatNumber(thread.reply_count)} 回复
+							</div>
+						</div>
+					</div>
+
+					{posts.map((post, index) => {
+						const floorNum = (page - 1) * pageSize + index + 1;
+						return (
+							<div class="post-view" id={`post-${post.id}`}>
+								<div class="post-header">
+									<div class="post-header-left">
+										<span class="post-floor">
+											{post.is_first_post ? '楼主' : `${floorNum}楼`}
+										</span>
+									</div>
+									<div class="text-small text-muted">
+										{formatFullDate(post.created_at)}
+									</div>
+								</div>
+								<div class="post-body">
+									<div class="post-sidebar">
+										<div class="post-user-avatar">
+											<img src={post.avatar || 'https://api.dicebear.com/7.x/pixel-art/svg?seed=default'} alt={post.username} />
+										</div>
+										<div class="post-username">
+											{post.user_is_admin && <span class="admin-badge" style="margin-right: 4px;">管理</span>}
+											{post.username}
+										</div>
+										<div class="post-usertitle">
+											{post.user_is_admin ? '论坛管理员' : '正式会员'}
+										</div>
+										<div class="post-user-stats">
+											<div class="post-user-stat post-gold">
+												💰 {formatNumber(post.user_gold)} 金粒
+											</div>
+										</div>
+									</div>
+									<div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+										<div class="post-content">
+											{post.content.split('\n').map((line, i) => (
+												<p>{line || '\u00A0'}</p>
+											))}
+										</div>
+										<div class="post-footer" style="margin-top: auto;">
+											<div class="text-small text-muted">
+												{post.updated_at !== post.created_at && `最后更新于 ${formatDate(post.updated_at)}`}
+											</div>
+											<div class="post-actions">
+												<a href="#reply" onclick="quotePost({post.id}, '{post.username}')">💬 回复</a>
+												<a href="#">👍 点赞</a>
+												<a href="#post-{post.id}">🔗 链接</a>
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						);
+					})}
+
+					<Pagination currentPage={page} totalPages={totalPages} baseUrl={`/thread/${threadId}`} />
+
+					{replySuccess && (
+						<div id="reply-success" class="card mb-4" style="border-color: var(--success); background: rgba(16, 185, 129, 0.05);">
+							<div class="card-body">
+								<p style="color: var(--success); margin: 0;">✅ 回复发表成功！</p>
+							</div>
+						</div>
+					)}
+
+					{replyError && (
+						<div class="card mb-4" style="border-color: var(--danger); background: rgba(239, 68, 68, 0.05);">
+							<div class="card-body">
+								<p style="color: var(--danger); margin: 0;">❌ {replyError}</p>
+							</div>
+						</div>
+					)}
+
+					<div id="reply" class="reply-form">
+						<h3>📝 发表回复</h3>
+						<form method="POST">
+							<div class="form-group">
+								<textarea
+									id="reply-content"
+									name="content"
+									placeholder="写下你的回复..."
+									rows="6"
+									required
+								></textarea>
+							</div>
+							<div class="flex justify-between items-center">
+								<div class="text-small text-muted">
+									请遵守论坛规范，文明发言
+								</div>
+								<button type="submit" class="btn btn-primary">
+									发表回复
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+				<Sidebar />
+			</div>
+		</div>
+		<Footer />
+
+		<script>
+			function quotePost(postId, username) {
+				const textarea = document.getElementById('reply-content');
+				if (textarea) {
+					textarea.value = `@${username} 在帖子中说：\n\n`;
+					textarea.focus();
+					textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				}
+			}
+			(window as any).quotePost = quotePost;
+		</script>
+	</body>
+</html>

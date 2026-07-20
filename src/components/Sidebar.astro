@@ -1,0 +1,76 @@
+---
+import { getStats, getLatestThreads, getHotThreads } from '../lib/db';
+import { formatDate, formatNumber } from '../lib/utils';
+
+const stats = await getStats();
+const latestThreads = await getLatestThreads(8);
+const hotThreads = await getHotThreads(8);
+---
+
+<aside class="sidebar">
+	<div class="sidebar-card">
+		<div class="sidebar-card-header">📊 论坛统计</div>
+		<div class="sidebar-card-body">
+			<div class="sidebar-stats">
+				<div class="sidebar-stat">
+					<div class="sidebar-stat-num">{formatNumber(stats.totalThreads)}</div>
+					<div class="sidebar-stat-label">主题</div>
+				</div>
+				<div class="sidebar-stat">
+					<div class="sidebar-stat-num">{formatNumber(stats.totalPosts)}</div>
+					<div class="sidebar-stat-label">帖子</div>
+				</div>
+				<div class="sidebar-stat">
+					<div class="sidebar-stat-num">{formatNumber(stats.totalUsers)}</div>
+					<div class="sidebar-stat-label">会员</div>
+				</div>
+				<div class="sidebar-stat">
+					<div class="sidebar-stat-num">{formatNumber(stats.totalForums)}</div>
+					<div class="sidebar-stat-label">版块</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="sidebar-card">
+		<div class="sidebar-card-header">🔥 热门主题</div>
+		<div class="sidebar-card-body">
+			{hotThreads.length > 0 ? (
+				hotThreads.map((thread) => (
+					<div class="sidebar-thread-item">
+						<div class="sidebar-thread-title">
+							<a href={`/thread/${thread.id}`}>{thread.title}</a>
+						</div>
+						<div class="sidebar-thread-meta">
+							<span>{thread.username}</span>
+							<span>{formatNumber(thread.view_count)} 浏览</span>
+						</div>
+					</div>
+				))
+			) : (
+				<div class="text-muted text-small">暂无热门主题</div>
+			)}
+		</div>
+	</div>
+
+	<div class="sidebar-card">
+		<div class="sidebar-card-header">🆕 最新回复</div>
+		<div class="sidebar-card-body">
+			{latestThreads.length > 0 ? (
+				latestThreads.map((thread) => (
+					<div class="sidebar-thread-item">
+						<div class="sidebar-thread-title">
+							<a href={`/thread/${thread.id}`}>{thread.title}</a>
+						</div>
+						<div class="sidebar-thread-meta">
+							<span>{thread.last_post_username || thread.username}</span>
+							<span>{formatDate(thread.last_post_at)}</span>
+						</div>
+					</div>
+				))
+			) : (
+				<div class="text-muted text-small">暂无最新回复</div>
+			)}
+		</div>
+	</div>
+</aside>
